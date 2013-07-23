@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE beans PUBLIC "-//SPRING//DTD BEAN//EN" "http://www.springframework.org/dtd/spring-beans.dtd">
+<beans>
+	<!--<context:component-scan base-package="com.sundoctor"/> -->
+	
+	<!-- 属性文件读入 -->
+	<bean id="propertyConfigurer" class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer">
+		<property name="locations">
+			<list>
+				<value>classpath:extra.properties</value>
+			</list>
+		</property>
+	</bean>
+	
+	<!-- Job -->
+	<bean id="dj" class="com.eastcom.batch.DownloadJob">
+		<property name="basePath" value="${basePath}"></property>
+		<property name="script" value="${basePath}${script}"></property>
+		<property name="remotePath" value="${remotePath}"></property>
+		<property name="remoteFileName" value="${remoteFileName}"></property>
+		<property name="localPath" value="${basePath}${localPath}"></property>
+		<property name="localName" value="${localName}"></property>
+	</bean>
+	<bean id="th" class="com.eastcom.batch.TxtHandle"></bean>
+	<bean id="job" class="com.eastcom.batch.BatchHandle">
+		<property name="dj" ref="dj"></property>
+		<property name="th" ref="th"></property>
+	</bean>
+	<!-- JobDetail -->
+	<bean id="jobDetail"
+		class="org.springframework.scheduling.quartz.MethodInvokingJobDetailFactoryBean">
+		<property name="targetObject">
+			<ref bean="job" />
+		</property>
+		<property name="targetMethod">
+			<value>execute</value>
+		</property>
+	</bean>
+
+	<!-- Trigger -->
+	<bean id="trigger" class="org.springframework.scheduling.quartz.CronTriggerBean">
+		<property name="jobDetail">
+			<ref bean="jobDetail" />
+		</property>
+		<property name="cronExpression" value="${cron}" />
+	</bean>
+	
+	<!-- Scheduler -->
+	<bean id="springscheduler" lazy-init="false" class="org.springframework.scheduling.quartz.SchedulerFactoryBean">
+		<property name="triggers">
+			<list>
+				<ref bean="trigger" />
+			</list>
+		</property>
+	</bean>
+	
+	<bean id="Agent" class="com.sun.jdmk.comm.HtmlAdaptorServer" init-method="start">
+		<constructor-arg index="0" value="9092"/> 	
+		<constructor-arg index="1"> 		
+			<bean id="authInfo" class="com.sun.jdmk.comm.AuthInfo"> 			
+				<property name="login" value="admin" /> 			
+				<property name="password" value="admin" /> 		
+			</bean>      
+		</constructor-arg>
+	</bean>
+	<bean id="JMXServer" class="org.springframework.jmx.export.MBeanExporter">  
+		<property name="autodetectModeName">  
+            <value>AUTODETECT_NONE</value>  
+        </property>
+        <property name="autodetect" value="false"></property>
+        <property name="beans">  
+            <map>  
+                <entry key="A_DownloadJob:dj=dj" value-ref="dj"/>
+                <entry key="A_Agent:port=8082" value-ref="Agent"></entry>
+                <entry key="A_BatchHandle:batch=batch" value-ref="job"></entry>
+                <entry key="A_TxtHandle:txt=txt" value-ref="th"></entry>
+                <entry key="A_JobDetail:job=job" value-ref="jobDetail"></entry>
+                <entry key="A_Trigger:tri=tri" value-ref="trigger"></entry>
+            </map>  
+        </property>  
+    </bean>
+</beans>
